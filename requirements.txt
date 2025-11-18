@@ -1,0 +1,58 @@
+# ============================================================================
+# DEPENDENCIAS DEL PROYECTO - CALCULADORA VECTORIAL 3D
+# ============================================================================
+# Este archivo lista todas las librerías necesarias para ejecutar la aplicación
+# Instalar con: pip install -r requirements.txt
+
+# Framework principal para la interfaz web interactiva
+streamlit>=1.28.0
+
+# Librería para gráficos 3D interactivos (permite rotar, zoom, etc.)
+plotly>=5.17.0
+
+# Librería para cálculos numéricos (arrays, matrices, funciones matemáticas)
+numpy>=1.24.0
+
+# Librería para álgebra simbólica (derivadas, integrales, simplificación)
+sympy>=1.12
+
+# Librería para integración numérica precisa y optimizaciones científicas
+scipy>=1.11.0
+
+# ============================================================================
+# DEPENDENCIAS PARA NUEVAS FUNCIONALIDADES AVANZADAS
+# ============================================================================
+
+# Generación de PDFs profesionales con gráficos e imágenes
+reportlab>=4.0.0
+
+# Manipulación de imágenes para insertar en PDFs
+Pillow>=10.0.0
+
+# Barra de progreso para operaciones largas
+tqdm>=4.66.0
+
+# Matplotlib para guardar figuras temporales (usado en export PDF)
+matplotlib>=3.7.0
+
+# Kaleido para exportar figuras de Plotly a PNG
+kaleido>=0.2.1
+
+# ============================================================================
+# DEPENDENCIAS PARA DESARROLLO Y TESTING
+# ============================================================================
+
+# Framework de testing profesional con descubrimiento automático de tests
+pytest>=7.4.0
+
+# Formateador de código automático (estilo PEP 8)
+black>=23.0.0
+
+# Linter para verificar calidad de código
+flake8>=6.1.0
+
+# Plugin de pytest para cobertura de código
+pytest-cov>=4.1.0
+
+# Nota: Las versiones especificadas son compatibles entre sí y probadas
+# Puedes usar versiones más recientes si lo deseas (elimina el >= y la versión)

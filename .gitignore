@@ -1,0 +1,80 @@
+# ============================================================================
+# .gitignore - Archivos y carpetas a ignorar en el control de versiones
+# ============================================================================
+
+# Entornos virtuales de Python
+venv/
+env/
+ENV/
+.venv/
+
+# Archivos de cache de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Archivos de distribución / empaquetado
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Archivos de configuración de IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Archivos específicos de Streamlit
+.streamlit/secrets.toml
+.streamlit/config.toml
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Archivos de logs
+*.log
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Variables de entorno
+.env
+.env.local
+
+# Archivos temporales
+*.tmp
+*.temp
+
+# ============================================================================
+# Archivos de testing y cobertura
+# ============================================================================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.hypothesis/
+
+# Reportes de tests
+coverage.xml
+*.cover
+.cache
+nosetests.xml
+test-results/

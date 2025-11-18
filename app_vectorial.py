@@ -1643,12 +1643,13 @@ elif funcionalidad == "🎓 Generador de Ejercicios":
     with col1:
         tipo_ejercicio = st.selectbox(
             "📐 Tipo de ejercicio:",
-            ["gradiente", "divergencia_rotacional", "line_integral", "stokes"],
+            ["gradiente", "divergencia_rotacional", "line_integral", "stokes", "optimizacion"],
             format_func=lambda x: {
                 "gradiente": "∇φ Gradiente",
                 "divergencia_rotacional": "∇·F y ∇×F Div/Curl",
                 "line_integral": "∮ F·dr Integral de Línea",
-                "stokes": "🔄 Teorema de Stokes"
+                "stokes": "🔄 Teorema de Stokes",
+                "optimizacion": "📊 Optimización (Máx/Mín)"
             }[x],
             key="tipo_ejercicio",
             help="Selecciona qué concepto quieres practicar"
@@ -1810,6 +1811,58 @@ elif funcionalidad == "🎓 Generador de Ejercicios":
                         
                         if sol.get('stokes_holds'):
                             st.success("✅ El teorema de Stokes se verifica (ambos lados son iguales)")
+                    
+                    # OPTIMIZACIÓN
+                    if ejercicio['tipo'].startswith('optimizacion_'):
+                        # PUNTOS CRÍTICOS
+                        if 'gradient' in sol:
+                            st.markdown("**Gradiente:**")
+                            st.latex(f"\\nabla\\phi = \\left( {', '.join(sol['gradient'])} \\right)")
+                        
+                        if 'critical_point' in sol:
+                            st.markdown("**Punto crítico:**")
+                            st.latex(f"(x, y) = {sol['critical_point']}")
+                        
+                        if 'hessian' in sol:
+                            st.markdown("**Matriz Hessiana:**")
+                            st.latex(f"H = {sol['hessian']}")
+                        
+                        if 'eigenvalues' in sol:
+                            st.markdown("**Valores propios de H:**")
+                            st.latex(f"\\lambda = {sol['eigenvalues']}")
+                        
+                        if 'classification' in sol:
+                            st.markdown(f"**Clasificación:** {sol['classification'].upper()}")
+                            if sol['classification'] == 'mínimo local':
+                                st.success("✅ MÍNIMO LOCAL (todos los eigenvalues > 0)")
+                            elif sol['classification'] == 'máximo local':
+                                st.error("⬆️ MÁXIMO LOCAL (todos los eigenvalues < 0)")
+                            elif sol['classification'] == 'punto silla':
+                                st.warning("⚠️ PUNTO SILLA (eigenvalues con signos mixtos)")
+                        
+                        if 'phi_at_point' in sol:
+                            st.markdown(f"**Valor de φ en el punto crítico:** {sol['phi_at_point']:.6f}")
+                        
+                        # LAGRANGE
+                        if 'lagrangian' in sol:
+                            st.markdown("**Lagrangiano:**")
+                            st.latex(f"L = {sol['lagrangian']}")
+                        
+                        if 'lambda' in sol:
+                            st.markdown(f"**Multiplicador de Lagrange:** λ = {sol['lambda']:.6f}")
+                        
+                        if 'optimal_value' in sol:
+                            st.markdown(f"**Valor óptimo de φ:** {sol['optimal_value']:.6f}")
+                        
+                        # REGIÓN
+                        if 'max_point' in sol:
+                            st.markdown(f"**Máximo global:** en {sol['max_point']} con valor {sol['max_value']:.6f}")
+                        
+                        if 'min_point' in sol:
+                            st.markdown(f"**Mínimo global:** en {sol['min_point']} con valor {sol['min_value']:.6f}")
+                        
+                        if 'method' in sol:
+                            st.info(f"Método usado: {sol['method']}")
                     
                     # Mostrar interpretación si existe
                     if 'interpretacion' in ejercicio:
@@ -2237,7 +2290,7 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
                 if n_vars == 1:
                     vars_sym = (vars_sym,)
                 
-                phi = cv.parse_expr_safe(grad_phi_str, vars_sym)
+                phi = cv.safe_parse(grad_phi_str, vars_sym)
                 
                 # Construir punto y dirección
                 if n_vars == 2:
@@ -2364,7 +2417,7 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
                 if len(vars_list) == 1:
                     vars_sym = (vars_sym,)
                 
-                phi = cv.parse_expr_safe(crit_phi_str, vars_sym)
+                phi = cv.safe_parse(crit_phi_str, vars_sym)
                 
                 # Optimizar
                 result = opt.optimize_unconstrained(phi, vars_sym)
@@ -2506,11 +2559,11 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
                 if len(vars_list) == 1:
                     vars_sym = (vars_sym,)
                 
-                phi = cv.parse_expr_safe(lag_phi_str, vars_sym)
+                phi = cv.safe_parse(lag_phi_str, vars_sym)
                 
                 # Parsear restricciones
                 constraints_lines = [line.strip() for line in lag_constraints_str.strip().split('\n') if line.strip()]
-                constraints = [cv.parse_expr_safe(line, vars_sym) for line in constraints_lines]
+                constraints = [cv.safe_parse(line, vars_sym) for line in constraints_lines]
                 
                 # Resolver
                 result = opt.solve_lagrange(phi, vars_sym, constraints)
@@ -2645,7 +2698,7 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
             try:
                 # Parsear
                 x, y = sp.symbols('x y')
-                phi = cv.parse_expr_safe(reg_phi_str, (x, y))
+                phi = cv.safe_parse(reg_phi_str, (x, y))
                 
                 # Optimizar
                 result = opt.optimize_on_region(phi, (x, y), region_dict)

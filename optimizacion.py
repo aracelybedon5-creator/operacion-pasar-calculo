@@ -217,37 +217,83 @@ def directional_derivative(
             f"\\text{{1. Función: }} \\phi = {sp.latex(phi)}"
         )
         
-        # Paso 2: Calcular gradiente
+        # Paso 2: Calcular gradiente (DETALLADO)
         grad_sym, grad_func = compute_gradient(phi, vars)
         latex_steps.append(
-            f"\\text{{2. Gradiente: }} \\nabla\\phi = \\left({', '.join(sp.latex(g) for g in grad_sym)}\\right)"
+            f"\\text{{2. Calcular gradiente (derivadas parciales):}}"
+        )
+        for i, (var, g) in enumerate(zip(vars, grad_sym), 1):
+            latex_steps.append(
+                f"\\quad \\frac{{\\partial \\phi}}{{\\partial {sp.latex(var)}}} = \\frac{{\\partial}}{{\\partial {sp.latex(var)}}}\\left({sp.latex(phi)}\\right) = {sp.latex(g)}"
+            )
+        latex_steps.append(
+            f"\\text{{Por lo tanto: }} \\nabla\\phi = \\left({', '.join(sp.latex(g) for g in grad_sym)}\\right)"
         )
         
-        # Paso 3: Evaluar gradiente en el punto
+        # Paso 3: Evaluar gradiente en el punto (DETALLADO)
         grad_at_point = np.array(grad_func(*point))
         point_str = format_point_exact(point, tuple(str(v) for v in vars))
+        latex_steps.append(
+            f"\\text{{3. Evaluar gradiente en el punto }} {point_str}:"
+        )
+        for i, (var, g, val, pt) in enumerate(zip(vars, grad_sym, grad_at_point, point)):
+            # Mostrar sustitución
+            g_substituted = g.subs(var, pt) if len(vars) == 1 else g.subs(list(zip(vars, point)))
+            latex_steps.append(
+                f"\\quad \\frac{{\\partial \\phi}}{{\\partial {sp.latex(var)}}}\\bigg|_{{punto}} = {sp.latex(g_substituted)} = {format_number_prefer_exact(val)}"
+            )
         grad_coords = ", ".join(format_number_prefer_exact(g) for g in grad_at_point)
         latex_steps.append(
-            f"\\text{{3. Evaluar en }} {point_str}: \\nabla\\phi = ({grad_coords})"
+            f"\\text{{Gradiente evaluado: }} \\nabla\\phi({', '.join(format_number_prefer_exact(p) for p in point)}) = \\left({grad_coords}\\right)"
         )
         
-        # Paso 4: Normalizar dirección
+        # Paso 4: Normalizar dirección (DETALLADO)
         direction_array = np.array(direction, dtype=float)
         norm = np.linalg.norm(direction_array)
         
         if norm < 1e-10:
             raise ValueError("El vector dirección no puede ser cero")
         
+        latex_steps.append(
+            f"\\text{{4. Normalizar vector dirección:}}"
+        )
+        latex_steps.append(
+            f"\\quad \\text{{Vector dado: }} u = \\left({', '.join(str(d) for d in direction)}\\right)"
+        )
+        latex_steps.append(
+            f"\\quad ||u|| = \\sqrt{{{' + '.join(f'{d}^2' for d in direction)}}} = \\sqrt{{{sum(d**2 for d in direction)}}} = {format_number_prefer_exact(norm)}"
+        )
+        
         direction_normalized = direction_array / norm
         dir_coords = ", ".join(format_number_prefer_exact(d) for d in direction_normalized)
         latex_steps.append(
-            f"\\text{{4. Normalizar dirección: }} \\hat{{u}} = \\frac{{1}}{{{format_number_prefer_exact(norm)}}}({', '.join(str(d) for d in direction)}) = ({dir_coords})"
+            f"\\quad \\hat{{u}} = \\frac{{u}}{{||u||}} = \\frac{{1}}{{{format_number_prefer_exact(norm)}}}\\left({', '.join(str(d) for d in direction)}\\right) = \\left({dir_coords}\\right)"
         )
         
-        # Paso 5: Producto punto
+        # Paso 5: Producto punto (DETALLADO)
         dir_deriv = np.dot(grad_at_point, direction_normalized)
         latex_steps.append(
-            f"\\text{{5. Derivada direccional: }} D_{{\\hat{{u}}}}\\phi = \\nabla\\phi \\cdot \\hat{{u}} = {format_number_prefer_exact(dir_deriv)}"
+            f"\\text{{5. Calcular derivada direccional (producto punto):}}"
+        )
+        latex_steps.append(
+            f"\\quad D_{{\\hat{{u}}}}\\phi = \\nabla\\phi \\cdot \\hat{{u}}"
+        )
+        
+        # Mostrar cada término del producto punto
+        products = [f"({format_number_prefer_exact(g)})({format_number_prefer_exact(d)})" 
+                   for g, d in zip(grad_at_point, direction_normalized)]
+        latex_steps.append(
+            f"\\quad = {' + '.join(products)}"
+        )
+        
+        # Mostrar multiplicaciones individuales
+        individual_products = [g * d for g, d in zip(grad_at_point, direction_normalized)]
+        latex_steps.append(
+            f"\\quad = {' + '.join(format_number_prefer_exact(p) for p in individual_products)}"
+        )
+        
+        latex_steps.append(
+            f"\\quad = {format_number_prefer_exact(dir_deriv)}"
         )
         
         # Determinar si es dirección de máximo/mínimo
@@ -329,12 +375,28 @@ def hessian_and_eig(
         latex_steps = []
         n = len(vars)
         
-        # Calcular Hessiana simbólica
-        hessian_sym = sp.Matrix([[sp.diff(phi, vi, vj) for vj in vars] for vi in vars])
-        hessian_sym = sp.simplify(hessian_sym)
-        
+        # Paso 1: Definir función
         latex_steps.append(
-            f"\\text{{Matriz Hessiana:}} H = {sp.latex(hessian_sym)}"
+            f"\\text{{1. Función: }} \\phi = {sp.latex(phi)}"
+        )
+        
+        # Paso 2: Calcular Hessiana simbólica (DETALLADO)
+        latex_steps.append(
+            f"\\text{{2. Calcular matriz Hessiana (segundas derivadas parciales):}}"
+        )
+        
+        hessian_sym = sp.Matrix([[sp.diff(phi, vi, vj) for vj in vars] for vi in vars])
+        
+        # Mostrar cada derivada parcial
+        for i, vi in enumerate(vars):
+            for j, vj in enumerate(vars):
+                latex_steps.append(
+                    f"\\quad H_{{{i+1}{j+1}}} = \\frac{{\\partial^2 \\phi}}{{\\partial {sp.latex(vi)} \\partial {sp.latex(vj)}}} = {sp.latex(hessian_sym[i, j])}"
+                )
+        
+        hessian_sym = sp.simplify(hessian_sym)
+        latex_steps.append(
+            f"\\text{{Matriz Hessiana:}} \\quad H = {sp.latex(hessian_sym)}"
         )
         
         result = {
@@ -355,7 +417,7 @@ def hessian_and_eig(
             
             point_str = format_point_exact(point, tuple(str(v) for v in vars))
             latex_steps.append(
-                f"\\text{{Evaluar en }} {point_str}:"
+                f"\\text{{3. Evaluar Hessiana en }} {point_str}:"
             )
             
             # Mostrar matriz numérica
@@ -364,15 +426,21 @@ def hessian_and_eig(
                 row = " & ".join(format_number_prefer_exact(hessian_numeric[i, j]) for j in range(n))
                 hess_latex += row + " \\\\\n"
             hess_latex += "\\end{pmatrix}"
-            latex_steps.append(f"H = {hess_latex}")
+            latex_steps.append(f"\\quad H = {hess_latex}")
             
             # Valores propios
             eig_str = ", ".join(format_number_prefer_exact(eig) for eig in eigenvalues)
             latex_steps.append(
-                f"\\text{{Valores propios: }} \\lambda = [{eig_str}]"
+                f"\\text{{4. Calcular valores propios (eigenvalues):}}"
             )
             latex_steps.append(
-                f"\\text{{Determinante: }} \\det(H) = {format_number_prefer_exact(determinant)}"
+                f"\\quad \\lambda_i = [{eig_str}]"
+            )
+            latex_steps.append(
+                f"\\text{{5. Calcular determinante:}}"
+            )
+            latex_steps.append(
+                f"\\quad \\det(H) = {format_number_prefer_exact(determinant)}"
             )
             
             result.update({

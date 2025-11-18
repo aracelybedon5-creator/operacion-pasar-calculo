@@ -2413,6 +2413,8 @@ def generate_exercises(
             exercise = _generate_line_integral_exercise(exercise_id, i)
         elif tipo == 'stokes':
             exercise = _generate_stokes_exercise(exercise_id, i)
+        elif tipo == 'optimizacion':
+            exercise = _generate_optimization_exercise(exercise_id, i)
         else:
             raise ValueError(f"Tipo de ejercicio desconocido: {tipo}")
         
@@ -2889,6 +2891,247 @@ def plot_error_heatmap(
     )
     
     return fig
+
+
+def _generate_optimization_exercise(exercise_id: str, idx: int) -> Dict[str, Any]:
+    """Genera un ejercicio de optimización con dificultad progresiva."""
+    import random
+    
+    x, y = sp.symbols('x y')
+    
+    # Dificultad basada en índice
+    difficulty = 'facil' if idx == 0 else ('intermedio' if idx <= 2 else 'dificil')
+    
+    # Determinar tipo de problema de optimización
+    problem_types = ['criticos', 'lagrange', 'region']
+    problem_type = random.choice(problem_types) if difficulty != 'facil' else 'criticos'
+    
+    if problem_type == 'criticos':
+        # PUNTOS CRÍTICOS Y CLASIFICACIÓN
+        templates_facil = [
+            (x**2 + y**2, "paraboloide (mínimo en origen)"),
+            (x**2 - y**2, "silla de montar (punto silla en origen)"),
+            (-x**2 - y**2, "paraboloide invertido (máximo en origen)"),
+        ]
+        
+        templates_intermedio = [
+            (x**2 + 2*y**2 - 4*x + 8*y, "paraboloide con desplazamiento"),
+            (x**3 - 12*x + y**2, "función con múltiples críticos"),
+            (x**2*y - y**3/3 - x**2, "superficie compleja"),
+        ]
+        
+        templates_dificil = [
+            (x**4 + y**4 - 4*x*y, "cuártica con término mixto"),
+            (sp.sin(x)*sp.cos(y), "trigonométrica (múltiples críticos)"),
+            (sp.exp(-(x**2 + y**2))*(x**2 - y**2), "gaussiana con silla"),
+        ]
+        
+        if difficulty == 'facil':
+            phi, description = random.choice(templates_facil)
+        elif difficulty == 'intermedio':
+            phi, description = random.choice(templates_intermedio)
+        else:
+            phi, description = random.choice(templates_dificil)
+        
+        phi_str = str(phi)
+        
+        # Calcular gradiente
+        grad = tuple(sp.diff(phi, var) for var in (x, y))
+        
+        # Encontrar puntos críticos (simbólico)
+        try:
+            critical_points = sp.solve(grad, (x, y), dict=True)
+            if critical_points:
+                # Tomar el primer punto crítico
+                pt = critical_points[0]
+                pt_values = (float(pt[x]), float(pt[y]))
+            else:
+                # Si no hay solución simbólica, usar origen
+                pt_values = (0.0, 0.0)
+        except:
+            pt_values = (0.0, 0.0)
+        
+        # Calcular Hessiana
+        hessian = sp.Matrix([
+            [sp.diff(phi, x, x), sp.diff(phi, x, y)],
+            [sp.diff(phi, y, x), sp.diff(phi, y, y)]
+        ])
+        
+        # Evaluar Hessiana en punto crítico
+        hessian_at_pt = hessian.subs({x: pt_values[0], y: pt_values[1]})
+        eigenvalues = [float(sp.re(eig)) for eig in hessian_at_pt.eigenvals().keys()]
+        
+        # Clasificar
+        if all(eig > 0 for eig in eigenvalues):
+            classification = "mínimo local"
+        elif all(eig < 0 for eig in eigenvalues):
+            classification = "máximo local"
+        elif any(eig > 0 for eig in eigenvalues) and any(eig < 0 for eig in eigenvalues):
+            classification = "punto silla"
+        else:
+            classification = "indeterminado"
+        
+        return {
+            'id': exercise_id,
+            'tipo': 'optimizacion_criticos',
+            'dificultad': difficulty,
+            'instruccion': f"Encuentra los puntos críticos de φ(x,y) = {phi_str} y clasifícalos.",
+            'descripcion': f"Esta es una {description}. Debes calcular ∇φ, resolver ∇φ=0, y usar la Hessiana para clasificar.",
+            'inputs': {
+                'phi': phi_str,
+                'variables': 'x, y'
+            },
+            'solution': {
+                'gradient': [str(g) for g in grad],
+                'critical_point': pt_values,
+                'hessian': str(hessian),
+                'eigenvalues': eigenvalues,
+                'classification': classification,
+                'phi_at_point': float(phi.subs({x: pt_values[0], y: pt_values[1]}))
+            },
+            'tolerance': 1e-4,
+            'hints': [
+                "💡 **Nivel 1:** Para encontrar puntos críticos, debes resolver ∇φ = 0.",
+                "💡 **Nivel 2:** Calcula las derivadas parciales ∂φ/∂x y ∂φ/∂y, luego iguala ambas a cero.",
+                "💡 **Nivel 3:** Después de encontrar el punto, calcula la matriz Hessiana H y sus valores propios.",
+                f"💡 **Nivel 4:** El punto crítico está en ({pt_values[0]:.3f}, {pt_values[1]:.3f}). Clasifícalo con los eigenvalues: {eigenvalues}."
+            ],
+            'interpretacion': f"Físicamente, esta función representa {description}. El punto crítico es un **{classification}**."
+        }
+    
+    elif problem_type == 'lagrange':
+        # MULTIPLICADORES DE LAGRANGE
+        # Optimizar f(x,y) sujeto a g(x,y) = 0
+        
+        # Funciones objetivo simples
+        objective_funcs = [
+            (x*y, "producto (maximizar área)"),
+            (x**2 + y**2, "suma de cuadrados (minimizar distancia)"),
+            (x + y, "suma (optimizar presupuesto)"),
+        ]
+        
+        # Restricciones
+        constraints = [
+            (x + y - 10, "línea (presupuesto total = 10)"),
+            (x**2 + y**2 - 25, "círculo (radio = 5)"),
+            (x**2/9 + y**2/4 - 1, "elipse"),
+        ]
+        
+        phi, desc_obj = random.choice(objective_funcs)
+        constraint, desc_const = random.choice(constraints)
+        
+        phi_str = str(phi)
+        constraint_str = str(constraint) + " = 0"
+        
+        # Resolver con Lagrange (simplificado)
+        lam = sp.Symbol('lambda')
+        L = phi - lam * constraint
+        
+        grad_L = [sp.diff(L, var) for var in (x, y, lam)]
+        
+        try:
+            solutions = sp.solve(grad_L, (x, y, lam), dict=True)
+            if solutions:
+                sol = solutions[0]
+                sol_point = (float(sol[x]), float(sol[y]))
+                lambda_val = float(sol[lam])
+            else:
+                sol_point = (5.0, 5.0)
+                lambda_val = 0.0
+        except:
+            sol_point = (5.0, 5.0)
+            lambda_val = 0.0
+        
+        return {
+            'id': exercise_id,
+            'tipo': 'optimizacion_lagrange',
+            'dificultad': difficulty,
+            'instruccion': f"Optimiza φ(x,y) = {phi_str} sujeto a la restricción {constraint_str}.",
+            'descripcion': f"Problema de {desc_obj} con restricción {desc_const}. Usa multiplicadores de Lagrange.",
+            'inputs': {
+                'phi': phi_str,
+                'constraint': constraint_str,
+                'variables': 'x, y'
+            },
+            'solution': {
+                'lagrangian': str(L),
+                'critical_point': sol_point,
+                'lambda': lambda_val,
+                'optimal_value': float(phi.subs({x: sol_point[0], y: sol_point[1]}))
+            },
+            'tolerance': 1e-3,
+            'hints': [
+                "💡 **Nivel 1:** Usa multiplicadores de Lagrange: construye L = φ - λg.",
+                "💡 **Nivel 2:** Calcula ∇L y resuelve el sistema ∇L = 0.",
+                "💡 **Nivel 3:** El sistema tiene 3 ecuaciones: ∂L/∂x=0, ∂L/∂y=0, ∂L/∂λ=0.",
+                f"💡 **Nivel 4:** La solución está en x≈{sol_point[0]:.2f}, y≈{sol_point[1]:.2f}, λ≈{lambda_val:.2f}."
+            ],
+            'interpretacion': f"Este problema optimiza {desc_obj} bajo la restricción {desc_const}."
+        }
+    
+    else:  # region
+        # OPTIMIZACIÓN EN REGIÓN
+        phi = x + y  # Función simple
+        
+        # Regiones
+        region_templates = [
+            ({'type': 'triangle', 'vertices': [(0,0), (0,4), (3,0)]}, "triángulo con vértices en (0,0), (0,4), (3,0)"),
+            ({'type': 'rectangle', 'x_bounds': (0,5), 'y_bounds': (0,3)}, "rectángulo [0,5]×[0,3]"),
+        ]
+        
+        region, desc = random.choice(region_templates)
+        
+        # Encontrar máximo/mínimo en la región (evaluando vértices para triángulo)
+        if region['type'] == 'triangle':
+            vertices = region['vertices']
+            values = [float(phi.subs({x: v[0], y: v[1]})) for v in vertices]
+            max_idx = values.index(max(values))
+            min_idx = values.index(min(values))
+            max_point = vertices[max_idx]
+            min_point = vertices[min_idx]
+            max_value = values[max_idx]
+            min_value = values[min_idx]
+        else:  # rectangle
+            corners = [
+                (region['x_bounds'][0], region['y_bounds'][0]),
+                (region['x_bounds'][0], region['y_bounds'][1]),
+                (region['x_bounds'][1], region['y_bounds'][0]),
+                (region['x_bounds'][1], region['y_bounds'][1]),
+            ]
+            values = [float(phi.subs({x: c[0], y: c[1]})) for c in corners]
+            max_idx = values.index(max(values))
+            min_idx = values.index(min(values))
+            max_point = corners[max_idx]
+            min_point = corners[min_idx]
+            max_value = values[max_idx]
+            min_value = values[min_idx]
+        
+        return {
+            'id': exercise_id,
+            'tipo': 'optimizacion_region',
+            'dificultad': difficulty,
+            'instruccion': f"Encuentra el máximo y mínimo de φ(x,y) = {str(phi)} en la región: {desc}.",
+            'descripcion': f"Optimización en una región acotada. Debes evaluar interior, frontera y vértices.",
+            'inputs': {
+                'phi': str(phi),
+                'region': region
+            },
+            'solution': {
+                'max_point': max_point,
+                'max_value': max_value,
+                'min_point': min_point,
+                'min_value': min_value,
+                'method': 'evaluación de vértices/frontera'
+            },
+            'tolerance': 1e-3,
+            'hints': [
+                "💡 **Nivel 1:** Para regiones acotadas, el máximo/mínimo está en puntos críticos interiores, frontera o vértices.",
+                "💡 **Nivel 2:** Primero busca puntos críticos en el interior (∇φ=0). Luego analiza la frontera.",
+                "💡 **Nivel 3:** Para esta función lineal, los extremos están en los vértices de la región.",
+                f"💡 **Nivel 4:** Máximo en {max_point} con valor {max_value:.2f}. Mínimo en {min_point} con valor {min_value:.2f}."
+            ],
+            'interpretacion': f"En regiones cerradas y acotadas, los extremos siempre existen (teorema del valor extremo)."
+        }
 
 
 def export_report_pdf(

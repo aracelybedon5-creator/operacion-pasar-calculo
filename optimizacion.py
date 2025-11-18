@@ -619,6 +619,10 @@ def optimize_unconstrained(
         critical_points = []
         method = 'symbolic'
         
+        # ====================================================================
+        # ESTRATEGIA HÍBRIDA: Simbólico primero, numérico como fallback
+        # ====================================================================
+        
         # Intentar resolución simbólica
         try:
             solutions = sp.solve(grad_sym, vars, dict=True)
@@ -648,53 +652,93 @@ def optimize_unconstrained(
         # Si no hay soluciones simbólicas, usar métodos numéricos
         if not critical_points:
             logger.info("Intentando resolución numérica con múltiples inicios")
-            method = 'numeric'
+            method = 'numeric_multistart'
             latex_steps.append(
-                "\\text{Resolución simbólica no disponible. Usando métodos numéricos...}"
+                "\\text{Resolución simbólica no disponible. Usando métodos numéricos con estrategia multi-inicio...}"
             )
             
             # Crear función del gradiente para fsolve
             grad_func = sp.lambdify(vars, grad_sym, modules=['numpy'])
             
             def grad_equations(x):
-                return grad_func(*x)
+                result = grad_func(*x)
+                # Asegurar que sea un array de numpy
+                if isinstance(result, (list, tuple)):
+                    return np.array(result, dtype=float)
+                return np.atleast_1d(result)
             
-            # Múltiples puntos iniciales
+            # ESTRATEGIA DE MÚLTIPLES INICIOS INTELIGENTE
+            # 1. Puntos estándar (origen, unidades, negativos)
             initial_guesses = [
-                tuple([0.0] * n),
-                tuple([1.0] * n),
-                tuple([-1.0] * n)
+                tuple([0.0] * n),      # Origen
+                tuple([1.0] * n),      # Positivos unitarios
+                tuple([-1.0] * n),     # Negativos unitarios
+                tuple([0.5] * n),      # Intermedios positivos
+                tuple([-0.5] * n),     # Intermedios negativos
             ]
-            # Añadir 5 puntos aleatorios
-            for _ in range(5):
-                initial_guesses.append(tuple(np.random.randn(n)))
+            
+            # 2. Combinaciones en los ejes
+            for i in range(n):
+                point = [0.0] * n
+                point[i] = 1.0
+                initial_guesses.append(tuple(point))
+                point[i] = -1.0
+                initial_guesses.append(tuple(point))
+            
+            # 3. Puntos aleatorios (con seed para reproducibilidad en tests)
+            np.random.seed(42)
+            for _ in range(8):
+                initial_guesses.append(tuple(np.random.uniform(-5, 5, n)))
             
             found_points = set()
+            convergence_info = {'successful': 0, 'failed': 0}
             
-            for guess in initial_guesses:
+            for idx, guess in enumerate(initial_guesses):
                 try:
                     solution = fsolve(grad_equations, guess, full_output=True)
-                    if solution[2] == 1:  # Convergió
+                    info = solution[1]
+                    converged = solution[2] == 1
+                    
+                    if converged:
                         point = tuple(solution[0])
                         
-                        # Verificar que no sea duplicado
-                        is_duplicate = False
-                        for existing_point in found_points:
-                            if np.allclose(point, existing_point, atol=1e-6):
-                                is_duplicate = True
-                                break
+                        # Validar que el gradiente sea realmente cercano a cero
+                        grad_at_point = grad_equations(point)
+                        grad_norm = np.linalg.norm(grad_at_point)
                         
-                        if not is_duplicate and all(np.isfinite(p) for p in point):
-                            found_points.add(point)
-                            classification = classify_critical_point(phi, vars, point)
-                            critical_points.append(classification)
+                        if grad_norm < 1e-4:  # Tolerancia estricta
+                            # Verificar que no sea duplicado
+                            is_duplicate = False
+                            for existing_point in found_points:
+                                if np.allclose(point, existing_point, atol=1e-6):
+                                    is_duplicate = True
+                                    break
                             
-                            point_str = format_point_exact(point, tuple(str(v) for v in vars))
-                            latex_steps.append(
-                                f"\\text{{Punto crítico: }} {point_str} \\quad (\\text{{{classification['classification']}}})"
-                            )
-                except Exception:
+                            if not is_duplicate and all(np.isfinite(p) for p in point):
+                                found_points.add(point)
+                                convergence_info['successful'] += 1
+                                
+                                classification = classify_critical_point(phi, vars, point)
+                                critical_points.append(classification)
+                                
+                                point_str = format_point_exact(point, tuple(str(v) for v in vars))
+                                latex_steps.append(
+                                    f"\\text{{Punto crítico {len(critical_points)}: }} {point_str} \\quad (\\text{{{classification['classification']}}})"
+                                )
+                        else:
+                            convergence_info['failed'] += 1
+                    else:
+                        convergence_info['failed'] += 1
+                        
+                except Exception as e:
+                    convergence_info['failed'] += 1
                     continue
+            
+            # Reportar diagnóstico de convergencia
+            if convergence_info['successful'] > 0:
+                latex_steps.append(
+                    f"\\text{{Diagnóstico: {convergence_info['successful']} convergencias exitosas, {convergence_info['failed']} fallos}}"
+                )
         
         # Encontrar mínimo y máximo globales
         global_min = None
@@ -883,24 +927,40 @@ def solve_lagrange(
         if not solutions_list:
             method = 'numeric'
             latex_steps.append(
-                "\\text{Usando métodos numéricos...}"
+                "\\text{Usando métodos numéricos con estrategia multi-inicio mejorada...}"
             )
             
             # Crear función para fsolve
             eqs_func = sp.lambdify(all_vars, equations, modules=['numpy'])
             
             def system(x):
-                return eqs_func(*x)
+                result = eqs_func(*x)
+                if isinstance(result, (list, tuple)):
+                    return np.array([float(r) for r in result], dtype=float)
+                return np.atleast_1d(float(result))
             
-            # Múltiples puntos iniciales
+            # Múltiples puntos iniciales con estrategia mejorada
             n_total = len(all_vars)
             initial_guesses = [
+                tuple([0.0] * n_total),
                 tuple([1.0] * n_total),
+                tuple([-1.0] * n_total),
                 tuple([0.5] * n_total)
             ]
-            # Añadir 5 puntos aleatorios
-            for _ in range(5):
-                initial_guesses.append(tuple(np.random.randn(n_total)))
+            
+            # Puntos en ejes
+            for i in range(min(n_total, 8)):
+                point = [0.0] * n_total
+                point[i] = 1.0
+                initial_guesses.append(tuple(point))
+            
+            # Aleatorios con diferentes escalas
+            np.random.seed(42)
+            for scale in [0.1, 1.0, 10.0]:
+                for _ in range(3):
+                    initial_guesses.append(tuple(np.random.randn(n_total) * scale))
+            
+            convergence_count = 0
             
             for guess in initial_guesses:
                 try:
@@ -910,27 +970,42 @@ def solve_lagrange(
                         point = tuple(all_vals[:len(vars)])
                         lambda_vals = tuple(all_vals[len(vars):])
                         
-                        if all(np.isfinite(p) for p in point):
-                            phi_func = sp.lambdify(vars, phi, modules=['numpy'])
-                            phi_value = float(phi_func(*point))
+                        # Verificar residual
+                        residual = np.linalg.norm(system(all_vals))
+                        
+                        if residual < 1e-4 and all(np.isfinite(p) for p in point):
+                            # Verificar restricciones
+                            constraints_ok = True
+                            for g in constraints:
+                                g_func = sp.lambdify(vars, g, modules=['numpy'])
+                                g_val = abs(float(g_func(*point)))
+                                if g_val > 1e-3:
+                                    constraints_ok = False
+                                    break
                             
-                            # Verificar si es duplicado
-                            is_duplicate = any(
-                                np.allclose(point, s['point'], atol=1e-6)
-                                for s in solutions_list
-                            )
-                            
-                            if not is_duplicate:
-                                solutions_list.append({
-                                    'point': point,
-                                    'lambda_values': lambda_vals,
-                                    'function_value': phi_value
-                                })
+                            if constraints_ok:
+                                phi_func = sp.lambdify(vars, phi, modules=['numpy'])
+                                phi_value = float(phi_func(*point))
                                 
-                                point_str = format_point_exact(point, tuple(str(v) for v in vars))
-                                latex_steps.append(
-                                    f"\\text{{Solución numérica: }} {point_str}, \\phi = {format_number_prefer_exact(phi_value)}"
+                                # Verificar si es duplicado
+                                is_duplicate = any(
+                                    np.allclose(point, s['point'], atol=1e-5)
+                                    for s in solutions_list
                                 )
+                                
+                                if not is_duplicate:
+                                    convergence_count += 1
+                                    solutions_list.append({
+                                        'point': point,
+                                        'lambda_values': lambda_vals,
+                                        'function_value': phi_value,
+                                        'residual': float(residual)
+                                    })
+                                    
+                                    point_str = format_point_exact(point, tuple(str(v) for v in vars))
+                                    latex_steps.append(
+                                        f"\\text{{Sol. {convergence_count}: }} {point_str}, \\phi = {format_number_prefer_exact(phi_value)}"
+                                    )
                 except Exception:
                     continue
         

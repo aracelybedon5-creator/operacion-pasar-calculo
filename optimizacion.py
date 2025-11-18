@@ -247,7 +247,84 @@ def directional_derivative(
             f"\\text{{Gradiente evaluado: }} \\nabla\\phi({', '.join(format_number_prefer_exact(p) for p in point)}) = \\left({grad_coords}\\right)"
         )
         
-        # Paso 4: Normalizar dirección (DETALLADO)
+        # ====================================================================
+        # DETECCIÓN AUTOMÁTICA DE PUNTO CRÍTICO
+        # Si ||∇φ|| ≈ 0, mostrar SEGUNDAS DERIVADAS (Hessiana)
+        # ====================================================================
+        grad_magnitude = np.linalg.norm(grad_at_point)
+        
+        if grad_magnitude < 1e-3:  # Es punto crítico (o muy cercano)
+            latex_steps.append("")
+            latex_steps.append("\\text{⚠️ DETECCIÓN: } ||\\nabla\\phi|| \\approx 0 \\text{ → Posible PUNTO CRÍTICO}")
+            latex_steps.append("\\text{Calculando SEGUNDAS DERIVADAS (Test de la Hessiana)...}")
+            latex_steps.append("")
+            
+            # Calcular matriz Hessiana
+            n = len(vars)
+            latex_steps.append("\\text{MATRIZ HESSIANA (Segundas derivadas parciales):}")
+            
+            # Calcular cada segunda derivada
+            for i, vi in enumerate(vars):
+                for j, vj in enumerate(vars):
+                    second_deriv = sp.diff(phi, vi, vj)
+                    second_deriv_simplified = sp.simplify(second_deriv)
+                    
+                    # Notación tradicional
+                    if i == j:
+                        if str(vi) == 'x':
+                            notation = "f_{xx}"
+                        elif str(vi) == 'y':
+                            notation = "f_{yy}"
+                        elif str(vi) == 'z':
+                            notation = "f_{zz}"
+                        else:
+                            notation = f"f_{{{sp.latex(vi)}{sp.latex(vi)}}}"
+                    else:
+                        notation = f"f_{{{sp.latex(vi)}{sp.latex(vj)}}}"
+                    
+                    latex_steps.append(
+                        f"\\quad {notation} = \\frac{{\\partial^2 f}}{{\\partial {sp.latex(vi)} \\partial {sp.latex(vj)}}} = {sp.latex(second_deriv_simplified)}"
+                    )
+                    
+                    # Evaluar en el punto
+                    second_deriv_val = float(second_deriv.subs(list(zip(vars, point))))
+                    latex_steps.append(
+                        f"\\quad {notation}({point_str}) = {format_number_prefer_exact(second_deriv_val)}"
+                    )
+            
+            # Construir matriz Hessiana
+            hessian_matrix = sp.Matrix([[sp.diff(phi, vi, vj) for vj in vars] for vi in vars])
+            latex_steps.append("")
+            latex_steps.append(f"\\text{{Matriz Hessiana: }} H = {sp.latex(hessian_matrix)}")
+            
+            # Evaluar numéricamente
+            hessian_func = sp.lambdify(vars, hessian_matrix, modules=['numpy'])
+            hessian_numeric = np.array(hessian_func(*point), dtype=float)
+            
+            # Valores propios
+            eigenvalues = np.linalg.eigvalsh(hessian_numeric)
+            det_H = np.linalg.det(hessian_numeric)
+            
+            latex_steps.append(f"\\text{{Determinante: }} \\det(H) = {format_number_prefer_exact(det_H)}")
+            latex_steps.append(f"\\text{{Valores propios: }} \\lambda = [{', '.join(format_number_prefer_exact(eig) for eig in eigenvalues)}]")
+            
+            # Clasificación
+            if all(eig > 0.01 for eig in eigenvalues):
+                classif = "MÍNIMO LOCAL"
+                latex_steps.append(f"\\text{{✓ Todos }} \\lambda > 0 \\Rightarrow \\text{{ {classif} }}")
+            elif all(eig < -0.01 for eig in eigenvalues):
+                classif = "MÁXIMO LOCAL"
+                latex_steps.append(f"\\text{{✓ Todos }} \\lambda < 0 \\Rightarrow \\text{{ {classif} }}")
+            elif any(eig > 0.01 for eig in eigenvalues) and any(eig < -0.01 for eig in eigenvalues):
+                classif = "PUNTO SILLA"
+                latex_steps.append(f"\\text{{✓ }} \\lambda \\text{{ con signos mixtos }} \\Rightarrow \\text{{ {classif} }}")
+            else:
+                classif = "INDETERMINADO"
+                latex_steps.append(f"\\text{{⚠️ Algún }} \\lambda \\approx 0 \\Rightarrow \\text{{ {classif} (requiere análisis adicional)}}")
+            
+            latex_steps.append("")
+        
+        # Continuar con normalización de dirección...
         direction_array = np.array(direction, dtype=float)
         norm = np.linalg.norm(direction_array)
         
@@ -462,13 +539,29 @@ def classify_critical_point(
     point: Tuple[float, ...]
 ) -> Dict[str, Any]:
     """
-    Clasifica un punto crítico usando la Hessiana.
+    Clasifica un punto crítico usando el TEST DE LA SEGUNDA DERIVADA (Hessiana).
     
-    Criterios de clasificación:
-    - Todos λ > 0: Mínimo local
-    - Todos λ < 0: Máximo local
-    - λ con signos mixtos: Punto silla
-    - Algún λ = 0: Indeterminado (requiere análisis adicional)
+    CRITERIO DE LA SEGUNDA DERIVADA (Teorema):
+    Para un punto crítico (a,b) de φ(x,y):
+    
+    1. Calcular la matriz Hessiana:
+       H = [∂²φ/∂x²    ∂²φ/∂x∂y]
+           [∂²φ/∂y∂x   ∂²φ/∂y² ]
+    
+    2. Calcular el discriminante:
+       D = det(H) = (∂²φ/∂x²)(∂²φ/∂y²) - (∂²φ/∂x∂y)²
+    
+    3. Clasificar:
+       - Si D > 0 y ∂²φ/∂x² > 0 → MÍNIMO LOCAL
+       - Si D > 0 y ∂²φ/∂x² < 0 → MÁXIMO LOCAL
+       - Si D < 0 → PUNTO SILLA
+       - Si D = 0 → INDETERMINADO (test falla)
+    
+    Para n variables, usamos valores propios de H:
+       - Todos λᵢ > 0 → MÍNIMO LOCAL
+       - Todos λᵢ < 0 → MÁXIMO LOCAL
+       - λᵢ con signos mixtos → PUNTO SILLA
+       - Algún λᵢ = 0 → INDETERMINADO
     
     Parámetros
     ----------
@@ -487,7 +580,7 @@ def classify_critical_point(
         - 'determinant': Determinante de la Hessiana
         - 'function_value': φ(point)
         - 'explanation': str con explicación detallada
-        - 'latex_steps': Pasos en LaTeX
+        - 'latex_steps': Pasos en LaTeX mostrando el TEST DE LA SEGUNDA DERIVADA
         
     Ejemplos
     --------

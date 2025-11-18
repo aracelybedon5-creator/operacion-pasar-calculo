@@ -2959,15 +2959,26 @@ def _generate_optimization_exercise(exercise_id: str, idx: int) -> Dict[str, Any
         
         # Evaluar Hessiana en punto crítico
         hessian_at_pt = hessian.subs({x: pt_values[0], y: pt_values[1]})
-        eigenvalues = [float(sp.re(eig)) for eig in hessian_at_pt.eigenvals().keys()]
         
-        # Clasificar
-        if all(eig > 0 for eig in eigenvalues):
-            classification = "mínimo local"
-        elif all(eig < 0 for eig in eigenvalues):
-            classification = "máximo local"
-        elif any(eig > 0 for eig in eigenvalues) and any(eig < 0 for eig in eigenvalues):
-            classification = "punto silla"
+        try:
+            eigenvals_dict = hessian_at_pt.eigenvals()
+            eigenvalues = [float(sp.re(eig)) for eig in eigenvals_dict.keys()]
+        except:
+            # Si falla el cálculo simbólico, usar numérico
+            import numpy as np
+            hess_numeric = np.array(hessian_at_pt).astype(float)
+            eigenvalues = list(np.linalg.eigvalsh(hess_numeric))
+        
+        # Clasificar (con validación)
+        if len(eigenvalues) >= 2:
+            if all(eig > 0.01 for eig in eigenvalues):
+                classification = "mínimo local"
+            elif all(eig < -0.01 for eig in eigenvalues):
+                classification = "máximo local"
+            elif any(eig > 0.01 for eig in eigenvalues) and any(eig < -0.01 for eig in eigenvalues):
+                classification = "punto silla"
+            else:
+                classification = "indeterminado"
         else:
             classification = "indeterminado"
         

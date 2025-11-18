@@ -2118,19 +2118,17 @@ elif funcionalidad == "🎨 Visualizador 3D Avanzado":
                 stream_json = cv.export_streamlines_json(streamlines_data, method='rk4', step=0.05)
                 st.success(f"✅ {len(streamlines_data)} streamlines generadas")
             
-            # ==== CARGAR HTML ====
-            import os
-            html_path = os.path.join("static", "threejs_viewer.html")
+            # ==== VISUALIZACIÓN 3D ====
+            st.info("💡 La visualización 3D avanzada requiere el archivo threejs_viewer.html. Por ahora, usa la visualización Plotly en las otras secciones.")
             
-            if not os.path.exists(html_path):
-                st.error(f"❌ No se encuentra {html_path}")
-                st.stop()
+            # TODO: Crear threejs_viewer.html o usar Plotly aquí
+            st.warning("🚧 Visualizador Three.js en desarrollo. Usa las otras secciones para visualización 3D con Plotly.")
             
-            with open(html_path, 'r', encoding='utf-8') as f:
-                html_template = f.read()
+            """
+            # ==== CÓDIGO COMENTADO - REQUIERE threejs_viewer.html ====
             
             # ==== INYECTAR DATOS EN HTML ====
-            init_script = f"""
+            init_script = f
             <script>
             window.addEventListener('load', function() {{
                 // Esperar a que window.viewer esté disponible
@@ -2151,7 +2149,7 @@ elif funcionalidad == "🎨 Visualizador 3D Avanzado":
                 }}, 100);
             }});
             </script>
-            """
+            
             
             # Insertar script antes de </body>
             html_with_data = html_template.replace("</body>", init_script + "</body>")
@@ -2164,7 +2162,7 @@ elif funcionalidad == "🎨 Visualizador 3D Avanzado":
             components.html(html_with_data, height=900, scrolling=False)
             
             st.markdown("---")
-            st.info("""
+            st.info(
             **🎮 Controles:**
             - 🖱️ **Click izquierdo + arrastrar**: Rotar cámara
             - 🖱️ **Rueda del mouse**: Zoom
@@ -2184,7 +2182,8 @@ elif funcionalidad == "🎨 Visualizador 3D Avanzado":
             window.viewer.exportPNG()
             window.viewer.exportOBJ()
             ```
-            """)
+            )
+            """
             
         except Exception as e:
             import traceback
@@ -2316,77 +2315,80 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
         
         # Mostrar resultados
         if st.session_state.get('grad_computed', False):
-            result = st.session_state['grad_result_computed']
-            phi = st.session_state['grad_phi_parsed']
-            vars_sym = st.session_state['grad_vars_parsed']
-            point = st.session_state['grad_point']
+            result = st.session_state.get('grad_result_computed')
+            phi = st.session_state.get('grad_phi_parsed')
+            vars_sym = st.session_state.get('grad_vars_parsed')
+            point = st.session_state.get('grad_point')
             
-            st.success("✅ Cálculo completado")
-            
-            # Mostrar pasos en LaTeX
-            st.markdown("### 📝 Paso a paso:")
-            for step in result['latex_steps']:
-                st.latex(step)
-            
-            # Resultados numéricos
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric(
-                    "Derivada Direccional",
-                    f"{result['directional_derivative']:.6f}"
-                )
-            
-            with col2:
-                st.metric(
-                    "||∇φ||",
-                    f"{result['gradient_magnitude']:.6f}"
-                )
-            
-            with col3:
-                if result['is_maximum_direction']:
-                    st.metric("Dirección", "⬆️ MÁXIMO")
-                elif result['is_minimum_direction']:
-                    st.metric("Dirección", "⬇️ MÍNIMO")
-                else:
-                    angle = np.arccos(np.clip(
-                        result['directional_derivative'] / result['gradient_magnitude'] if result['gradient_magnitude'] > 0 else 0,
-                        -1, 1
-                    )) * 180 / np.pi
-                    st.metric("Ángulo con ∇φ", f"{angle:.1f}°")
-            
-            # Visualización
-            if len(vars_sym) == 2:
-                st.markdown("### 📊 Visualización")
+            if result is None or phi is None or vars_sym is None or point is None:
+                st.warning("⚠️ Por favor, calcula el gradiente primero usando el botón 'Calcular'")
+            else:
+                st.success("✅ Cálculo completado")
                 
-                try:
-                    fig = opt.visualize_contour_2d(
-                        phi,
-                        vars_sym,
-                        critical_points=[],
-                        bounds=(
-                            (point[0] - 3, point[0] + 3),
-                            (point[1] - 3, point[1] + 3)
-                        ),
-                        show_gradient=True,
-                        resolution=80
+                # Mostrar pasos en LaTeX
+                st.markdown("### 📝 Paso a paso:")
+                for step in result['latex_steps']:
+                    st.latex(step)
+                
+                # Resultados numéricos
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric(
+                        "Derivada Direccional",
+                        f"{result['directional_derivative']:.6f}"
                     )
+                
+                with col2:
+                    st.metric(
+                        "||∇φ||",
+                        f"{result['gradient_magnitude']:.6f}"
+                    )
+                
+                with col3:
+                    if result['is_maximum_direction']:
+                        st.metric("Dirección", "⬆️ MÁXIMO")
+                    elif result['is_minimum_direction']:
+                        st.metric("Dirección", "⬇️ MÍNIMO")
+                    else:
+                        angle = np.arccos(np.clip(
+                            result['directional_derivative'] / result['gradient_magnitude'] if result['gradient_magnitude'] > 0 else 0,
+                            -1, 1
+                        )) * 180 / np.pi
+                        st.metric("Ángulo con ∇φ", f"{angle:.1f}°")
+                
+                # Visualización
+                if len(vars_sym) == 2:
+                    st.markdown("### 📊 Visualización")
                     
-                    # Marcar el punto de evaluación
-                    import plotly.graph_objects as go
-                    fig.add_trace(go.Scatter(
-                        x=[point[0]],
-                        y=[point[1]],
-                        mode='markers',
-                        marker=dict(size=15, color='red', symbol='star'),
-                        name='Punto de evaluación',
-                        showlegend=True
-                    ))
-                    
-                    st.plotly_chart(fig, use_container_width=True)
-                    
-                except Exception as e:
-                    st.warning(f"No se pudo generar visualización: {e}")
+                    try:
+                        fig = opt.visualize_contour_2d(
+                            phi,
+                            vars_sym,
+                            critical_points=[],
+                            bounds=(
+                                (point[0] - 3, point[0] + 3),
+                                (point[1] - 3, point[1] + 3)
+                            ),
+                            show_gradient=True,
+                            resolution=80
+                        )
+                        
+                        # Marcar el punto de evaluación
+                        import plotly.graph_objects as go
+                        fig.add_trace(go.Scatter(
+                            x=[point[0]],
+                            y=[point[1]],
+                            mode='markers',
+                            marker=dict(size=15, color='red', symbol='star'),
+                            name='Punto de evaluación',
+                            showlegend=True
+                        ))
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                    except Exception as e:
+                        st.warning(f"No se pudo generar visualización: {e}")
     
     # ========================================================================
     # TAB 2: PUNTOS CRÍTICOS Y CLASIFICACIÓN

@@ -32,6 +32,42 @@ Aplicación web interactiva desarrollada en Python con **Streamlit** para resolv
 - Visualización completa: superficie + frontera + campos
 - Comparación lado a lado de ambas integrales
 
+#### 6️⃣ **📊 OPTIMIZACIÓN (Máximos/Mínimos)** ✨ NUEVO
+- **Gradiente y Derivada Direccional**: Cálculo en un punto con dirección
+  - Detección automática de dirección de máximo/mínimo crecimiento
+  - Visualización con vectores y superficies
+  - Valores exactos (√2, fracciones) cuando es posible
+  
+- **Puntos Críticos y Clasificación**: Encuentra y clasifica todos los puntos donde ∇φ = 0
+  - Matriz Hessiana y valores propios
+  - Clasificación automática: mínimo local, máximo local, punto silla
+  - Visualización 3D con marcadores diferenciados por tipo
+  
+- **Multiplicadores de Lagrange**: Optimización con restricciones
+  - Soporte para múltiples restricciones
+  - Construcción automática del Lagrangiano
+  - Resolución simbólica y numérica con fallback
+  
+- **Optimización en Regiones**: Análisis completo sobre regiones acotadas
+  - Triángulos (vértices personalizables)
+  - Rectángulos (límites configurables)
+  - Elipses (semi-ejes y centro)
+  - Procedimiento completo: interior + bordes + vértices
+  - Tabla comparativa de todos los candidatos
+  
+- **Casos Especiales Pre-Configurados**:
+  - Rectángulo inscrito en elipse (solución analítica: x = a/√2, y = b/√2)
+  - Cobb-Douglas con restricción presupuestaria
+  - Integral de línea F·dr (círculo unitario → 2π)
+
+**Visualizaciones estilo GeoGebra**:
+- Ejes con ticks numerados
+- Curvas de nivel con etiquetas
+- Campo de gradiente con flechas (go.Cone)
+- Puntos críticos marcados con colores (azul=mínimo, rojo=máximo, amarillo=silla)
+- Controles interactivos (rotación, zoom, pan)
+- Tooltips informativos
+
 ### 🎨 Características Técnicas
 
 - **Visualización 3D interactiva** con Plotly (rotar, zoom, hover)
@@ -185,27 +221,124 @@ Esta aplicación es ideal para:
 
 ## 🛠️ Estructura del Código
 
-### `app_vectorial.py`
-Aplicación principal de Streamlit con interfaz completa:
-- Interfaz de usuario profesional
-- Integración con calc_vectorial.py
-- Visualizaciones 3D interactivas (Plotly)
-- Exportación de informes PDF
+### Módulos Principales
 
-### `calc_vectorial.py`
+#### `app_vectorial.py` (2900+ líneas)
+Aplicación principal de Streamlit con interfaz completa:
+- 6 módulos principales (Campo Vectorial, Gradiente, Integral de Línea, Flujo, Stokes, **Optimización**)
+- Interfaz de usuario profesional con session_state
+- Integración con todos los módulos de cálculo
+- Visualizaciones 3D interactivas (Plotly)
+- Exportación de informes
+
+#### `calc_vectorial.py` (650+ líneas)
 Módulo de cálculo vectorial seguro y vectorizado:
 - Gradiente, divergencia, rotacional
 - Integrales de línea y flujo de superficie
 - Generador de ejercicios
-- Parsing seguro (NO usa eval)
+- Parsing seguro (NO usa eval, solo whitelist de funciones)
 
-**Cada función está documentada** con docstrings completas y type hints.
+#### `optimizacion.py` ✨ NUEVO (1800+ líneas)
+Módulo completo de optimización multivariable:
+- `compute_gradient()`: Gradiente simbólico y función numpy
+- `directional_derivative()`: Derivada direccional con análisis
+- `hessian_and_eig()`: Hessiana y valores propios
+- `classify_critical_point()`: Clasificación automática de puntos críticos
+- `optimize_unconstrained()`: Resolución de ∇φ = 0
+- `solve_lagrange()`: Multiplicadores de Lagrange
+- `optimize_on_region()`: Optimización en regiones (triángulos, rectángulos, elipses)
+- `visualize_optimization_3d()`: Visualizaciones estilo GeoGebra
+- `visualize_contour_2d()`: Contornos con gradiente y región
+- Casos especiales: rectángulo en elipse, Cobb-Douglas
 
-### `requirements.txt`
+#### `viz_vectorial.py`, `viz_superficies.py`, `viz_curvas.py`
+Módulos de visualización especializados:
+- Campos vectoriales 3D con flechas
+- Superficies y curvas de nivel
+- Integrando con áreas positivas/negativas
+- Helper `ensure_array()` para compatibilidad
+
+**Cada función está documentada** con docstrings completas en español y type hints.
+
+### Tests
+
+#### `tests/test_optimizacion.py` ✨ NUEVO (377 líneas)
+Suite completa de tests pytest para optimización:
+- 25+ tests cubriendo todas las funciones
+- Tests de casos extremos y edge cases
+- Tests de integración (workflows completos)
+- Verificación de soluciones analíticas conocidas
+
+**Ejecutar tests:**
+```bash
+# Todos los tests
+pytest tests/ -v
+
+# Solo optimización
+pytest tests/test_optimizacion.py -v
+
+# Con coverage
+pytest tests/ --cov=optimizacion --cov-report=html
+```
+
+Ejemplo de salida esperada:
+```
+test_compute_gradient_simple ✓
+test_classify_minimum ✓
+test_classify_saddle ✓
+test_optimize_triangle ✓
+test_cobb_douglas ✓
+test_max_rectangle_in_ellipse ✓
+... (25+ tests)
+========================= 25 passed in 2.5s =========================
+```
+
+### Archivos de Documentación
+
+#### `requirements.txt`
 Lista de dependencias con versiones compatibles.
 
-### `README.md`
+#### `README.md`
 Este archivo con instrucciones completas.
+
+#### `CHANGELOG.md` ✨ NUEVO
+Registro detallado de todos los cambios del proyecto.
+
+#### `CASOS_DE_PRUEBA.md`
+70+ casos de prueba organizados por dificultad para todas las funcionalidades.
+
+#### `INSTRUCCIONES_GITHUB.md`
+Guía completa de Git/GitHub para colaboración.
+
+---
+
+## 🧪 Testing y Calidad
+
+### Cobertura de Tests
+
+**Módulo de Optimización:**
+- Gradiente: 4 tests
+- Clasificación de puntos: 3 tests  
+- Optimización sin restricciones: 2 tests
+- Lagrange: 3 tests
+- Regiones: 3 tests
+- Casos especiales: 2 tests
+- Formato exacto: 3 tests
+- Visualización: 2 tests
+- Integración: 3 tests
+
+**Resultados esperados:**
+- ✅ Todos los tests pasan
+- ✅ Sin warnings críticos
+- ✅ Cobertura >80% en optimizacion.py
+
+### Validación Manual
+
+Casos especiales con soluciones conocidas:
+1. **Punto silla en x² - y²**: eigenvalues = [2, -2]
+2. **Rectángulo en elipse**: x = a/√2, y = b/√2
+3. **Cobb-Douglas α=0.5, β=0.5, px=150, py=250, M=50000**: x* ≈ 166.67, y* ≈ 100
+4. **Círculo unitario rotacional**: ∫ F·dr = 2π
 
 ---
 

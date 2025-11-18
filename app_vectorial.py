@@ -66,6 +66,7 @@ funcionalidad = st.sidebar.selectbox(
         "Integral de Línea (∮ F·dr)",
         "Flujo de Superficie (∬ F·n dS)",
         "Verificar Teorema de Stokes",
+        "📊 Optimización (Máximos/Mínimos)",
         "🎓 Generador de Ejercicios",
         "🎨 Visualizador 3D Avanzado"
     ]
@@ -2137,6 +2138,742 @@ elif funcionalidad == "🎨 Visualizador 3D Avanzado":
             st.error(f"❌ Error: {e}")
             with st.expander("🔍 Ver traceback completo"):
                 st.code(traceback.format_exc())
+
+
+# ============================================================================
+# OPCIÓN 6: OPTIMIZACIÓN (MÁXIMOS/MÍNIMOS)
+# ============================================================================
+
+elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
+    st.header("📊 Optimización de Funciones Multivariables")
+    
+    st.markdown("""
+    ### Herramientas de Optimización Completas
+    
+    Encuentra máximos, mínimos y puntos silla de funciones de varias variables.
+    Incluye:
+    - **Gradiente y derivada direccional**
+    - **Puntos críticos y clasificación (Hessiana)**
+    - **Optimización sin restricciones**
+    - **Multiplicadores de Lagrange** (con restricciones)
+    - **Optimización sobre regiones** (triángulos, rectángulos, elipses)
+    - **Visualizaciones 3D/2D estilo GeoGebra**
+    """)
+    
+    # Importar módulo de optimización
+    try:
+        import optimizacion as opt
+    except ImportError:
+        st.error("❌ El módulo de optimización no está disponible. Asegúrate de que `optimizacion.py` esté en el directorio.")
+        st.stop()
+    
+    # Sub-tabs para diferentes tipos de optimización
+    opt_tab = st.tabs([
+        "📐 Gradiente y Derivada Direccional",
+        "🎯 Puntos Críticos",
+        "🔓 Optimización Libre",
+        "🔗 Multiplicadores de Lagrange",
+        "📍 Optimización en Regiones",
+        "⭐ Casos Especiales"
+    ])
+    
+    # ========================================================================
+    # TAB 1: GRADIENTE Y DERIVADA DIRECCIONAL
+    # ========================================================================
+    
+    with opt_tab[0]:
+        st.subheader("📐 Gradiente y Derivada Direccional")
+        
+        st.info("💡 Calcula el gradiente ∇φ y la derivada direccional D_u φ en un punto dado.")
+        
+        # Inputs
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            grad_phi_str = st.text_input(
+                "Función φ(x,y) o φ(x,y,z):",
+                value="x^2 + y^2",
+                help="Ejemplos: x^2 + y^2, x*y*z, sin(x)*cos(y)",
+                key="grad_phi"
+            )
+        
+        with col2:
+            grad_vars_str = st.text_input(
+                "Variables (separadas por coma):",
+                value="x, y",
+                help="Ejemplo: x, y o x, y, z",
+                key="grad_vars"
+            )
+        
+        # Punto de evaluación
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            grad_px = st.number_input("Punto x₀:", value=1.0, step=0.1, key="grad_px")
+        with col2:
+            grad_py = st.number_input("Punto y₀:", value=1.0, step=0.1, key="grad_py")
+        with col3:
+            grad_pz = st.number_input("Punto z₀ (si aplica):", value=0.0, step=0.1, key="grad_pz")
+        
+        # Dirección
+        st.markdown("**Vector dirección** (se normalizará automáticamente):")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            grad_dx = st.number_input("Componente u:", value=1.0, step=0.1, key="grad_dx")
+        with col2:
+            grad_dy = st.number_input("Componente v:", value=0.0, step=0.1, key="grad_dy")
+        with col3:
+            grad_dz = st.number_input("Componente w (si aplica):", value=0.0, step=0.1, key="grad_dz")
+        
+        # Opciones de visualización
+        grad_show_exact = st.checkbox("Mostrar valores exactos (raíces, fracciones)", value=True, key="grad_show_exact")
+        
+        if st.button("🔍 Calcular Gradiente y Derivada Direccional", type="primary", key="calc_grad"):
+            try:
+                # Parsear función
+                vars_list = [v.strip() for v in grad_vars_str.split(',')]
+                n_vars = len(vars_list)
+                
+                vars_sym = sp.symbols(' '.join(vars_list))
+                if n_vars == 1:
+                    vars_sym = (vars_sym,)
+                
+                phi = cv.parse_expr_safe(grad_phi_str, vars_sym)
+                
+                # Construir punto y dirección
+                if n_vars == 2:
+                    point = (grad_px, grad_py)
+                    direction = (grad_dx, grad_dy)
+                else:
+                    point = (grad_px, grad_py, grad_pz)
+                    direction = (grad_dx, grad_dy, grad_dz)
+                
+                # Calcular derivada direccional
+                result = opt.directional_derivative(phi, vars_sym, point, direction)
+                
+                # Guardar en session state
+                st.session_state['grad_result'] = result
+                st.session_state['grad_phi'] = phi
+                st.session_state['grad_vars'] = vars_sym
+                st.session_state['grad_computed'] = True
+                
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
+                st.session_state['grad_computed'] = False
+        
+        # Mostrar resultados
+        if st.session_state.get('grad_computed', False):
+            result = st.session_state['grad_result']
+            phi = st.session_state['grad_phi']
+            vars_sym = st.session_state['grad_vars']
+            
+            st.success("✅ Cálculo completado")
+            
+            # Mostrar pasos en LaTeX
+            st.markdown("### 📝 Paso a paso:")
+            for step in result['latex_steps']:
+                st.latex(step)
+            
+            # Resultados numéricos
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric(
+                    "Derivada Direccional",
+                    f"{result['directional_derivative']:.6f}"
+                )
+            
+            with col2:
+                st.metric(
+                    "||∇φ||",
+                    f"{result['gradient_magnitude']:.6f}"
+                )
+            
+            with col3:
+                if result['is_maximum_direction']:
+                    st.metric("Dirección", "⬆️ MÁXIMO")
+                elif result['is_minimum_direction']:
+                    st.metric("Dirección", "⬇️ MÍNIMO")
+                else:
+                    angle = np.arccos(np.clip(
+                        result['directional_derivative'] / result['gradient_magnitude'] if result['gradient_magnitude'] > 0 else 0,
+                        -1, 1
+                    )) * 180 / np.pi
+                    st.metric("Ángulo con ∇φ", f"{angle:.1f}°")
+            
+            # Visualización
+            if len(vars_sym) == 2:
+                st.markdown("### 📊 Visualización")
+                
+                try:
+                    fig = opt.visualize_contour_2d(
+                        phi,
+                        vars_sym,
+                        critical_points=[],
+                        bounds=(
+                            (point[0] - 3, point[0] + 3),
+                            (point[1] - 3, point[1] + 3)
+                        ),
+                        show_gradient=True,
+                        resolution=80
+                    )
+                    
+                    # Marcar el punto de evaluación
+                    import plotly.graph_objects as go
+                    fig.add_trace(go.Scatter(
+                        x=[point[0]],
+                        y=[point[1]],
+                        mode='markers',
+                        marker=dict(size=15, color='red', symbol='star'),
+                        name='Punto de evaluación',
+                        showlegend=True
+                    ))
+                    
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                except Exception as e:
+                    st.warning(f"No se pudo generar visualización: {e}")
+    
+    # ========================================================================
+    # TAB 2: PUNTOS CRÍTICOS Y CLASIFICACIÓN
+    # ========================================================================
+    
+    with opt_tab[1]:
+        st.subheader("🎯 Puntos Críticos y Clasificación")
+        
+        st.info("💡 Encuentra todos los puntos donde ∇φ = 0 y clasifícalos usando la matriz Hessiana.")
+        
+        # Inputs
+        crit_phi_str = st.text_input(
+            "Función φ(x,y) o φ(x,y,z):",
+            value="x^2 - y^2",
+            help="Ejemplo clásico de punto silla: x^2 - y^2",
+            key="crit_phi"
+        )
+        
+        crit_vars_str = st.text_input(
+            "Variables:",
+            value="x, y",
+            key="crit_vars"
+        )
+        
+        if st.button("🔍 Encontrar Puntos Críticos", type="primary", key="calc_crit"):
+            try:
+                # Parsear
+                vars_list = [v.strip() for v in crit_vars_str.split(',')]
+                vars_sym = sp.symbols(' '.join(vars_list))
+                if len(vars_list) == 1:
+                    vars_sym = (vars_sym,)
+                
+                phi = cv.parse_expr_safe(crit_phi_str, vars_sym)
+                
+                # Optimizar
+                result = opt.optimize_unconstrained(phi, vars_sym)
+                
+                # Guardar
+                st.session_state['crit_result'] = result
+                st.session_state['crit_phi'] = phi
+                st.session_state['crit_vars'] = vars_sym
+                st.session_state['crit_computed'] = True
+                
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
+                st.session_state['crit_computed'] = False
+        
+        # Mostrar resultados
+        if st.session_state.get('crit_computed', False):
+            result = st.session_state['crit_result']
+            phi = st.session_state['crit_phi']
+            vars_sym = st.session_state['crit_vars']
+            
+            st.success(f"✅ Encontrados {len(result['critical_points'])} punto(s) crítico(s)")
+            
+            # Pasos LaTeX
+            with st.expander("📝 Ver pasos completos", expanded=False):
+                for step in result['latex_steps']:
+                    st.latex(step)
+            
+            # Tabla de puntos críticos
+            if result['critical_points']:
+                st.markdown("### 📋 Resumen de Puntos Críticos")
+                
+                import pandas as pd
+                
+                data = []
+                for i, cp in enumerate(result['critical_points'], 1):
+                    point_str = f"({', '.join(f'{p:.4f}' for p in cp['point'])})"
+                    data.append({
+                        '#': i,
+                        'Punto': point_str,
+                        'φ(punto)': f"{cp['function_value']:.6f}",
+                        'Clasificación': cp['classification']
+                    })
+                
+                df = pd.DataFrame(data)
+                st.dataframe(df, use_container_width=True)
+                
+                # Métricas
+                col1, col2, col3 = st.columns(3)
+                
+                minimos = [cp for cp in result['critical_points'] if cp['classification'] == 'mínimo local']
+                maximos = [cp for cp in result['critical_points'] if cp['classification'] == 'máximo local']
+                sillas = [cp for cp in result['critical_points'] if cp['classification'] == 'punto silla']
+                
+                with col1:
+                    st.metric("Mínimos locales", len(minimos))
+                with col2:
+                    st.metric("Máximos locales", len(maximos))
+                with col3:
+                    st.metric("Puntos silla", len(sillas))
+                
+                # Visualización
+                if len(vars_sym) == 2:
+                    st.markdown("### 📊 Visualización 3D")
+                    
+                    # Determinar bounds basado en puntos críticos
+                    all_x = [cp['point'][0] for cp in result['critical_points']]
+                    all_y = [cp['point'][1] for cp in result['critical_points']]
+                    
+                    x_range = (min(all_x) - 2, max(all_x) + 2)
+                    y_range = (min(all_y) - 2, max(all_y) + 2)
+                    
+                    try:
+                        fig = opt.visualize_optimization_3d(
+                            phi,
+                            vars_sym,
+                            critical_points=result['critical_points'],
+                            bounds=(x_range, y_range),
+                            resolution=60,
+                            show_gradient=True,
+                            gradient_density=12
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                    except Exception as e:
+                        st.warning(f"No se pudo generar visualización 3D: {e}")
+            else:
+                st.warning("⚠️ No se encontraron puntos críticos")
+    
+    # ========================================================================
+    # TAB 3: OPTIMIZACIÓN SIN RESTRICCIONES
+    # ========================================================================
+    
+    with opt_tab[2]:
+        st.subheader("🔓 Optimización Sin Restricciones")
+        
+        st.info("💡 Igual que Puntos Críticos, pero con enfoque en encontrar el máximo/mínimo global.")
+        
+        st.markdown("Consulta la pestaña **Puntos Críticos** para optimización sin restricciones.")
+        st.markdown("Esta funcionalidad está integrada en ese módulo.")
+    
+    # ========================================================================
+    # TAB 4: MULTIPLICADORES DE LAGRANGE
+    # ========================================================================
+    
+    with opt_tab[3]:
+        st.subheader("🔗 Multiplicadores de Lagrange")
+        
+        st.info("💡 Optimiza φ(x,y,...) sujeto a restricciones g₁=0, g₂=0, ...")
+        
+        # Función objetivo
+        lag_phi_str = st.text_input(
+            "Función objetivo φ:",
+            value="x*y",
+            help="Función a maximizar/minimizar",
+            key="lag_phi"
+        )
+        
+        lag_vars_str = st.text_input(
+            "Variables:",
+            value="x, y",
+            key="lag_vars"
+        )
+        
+        # Restricciones
+        st.markdown("**Restricciones** (una por línea, en forma g=0):")
+        lag_constraints_str = st.text_area(
+            "Restricciones:",
+            value="x + y - 10",
+            help="Ejemplo: x + y - 10 (para x+y=10). Una restricción por línea.",
+            key="lag_constraints",
+            height=100
+        )
+        
+        if st.button("🔍 Resolver con Lagrange", type="primary", key="calc_lag"):
+            try:
+                # Parsear
+                vars_list = [v.strip() for v in lag_vars_str.split(',')]
+                vars_sym = sp.symbols(' '.join(vars_list))
+                if len(vars_list) == 1:
+                    vars_sym = (vars_sym,)
+                
+                phi = cv.parse_expr_safe(lag_phi_str, vars_sym)
+                
+                # Parsear restricciones
+                constraints_lines = [line.strip() for line in lag_constraints_str.strip().split('\n') if line.strip()]
+                constraints = [cv.parse_expr_safe(line, vars_sym) for line in constraints_lines]
+                
+                # Resolver
+                result = opt.solve_lagrange(phi, vars_sym, constraints)
+                
+                # Guardar
+                st.session_state['lag_result'] = result
+                st.session_state['lag_phi'] = phi
+                st.session_state['lag_vars'] = vars_sym
+                st.session_state['lag_constraints'] = constraints
+                st.session_state['lag_computed'] = True
+                
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
+                st.session_state['lag_computed'] = False
+        
+        # Mostrar resultados
+        if st.session_state.get('lag_computed', False):
+            result = st.session_state['lag_result']
+            phi = st.session_state['lag_phi']
+            
+            st.success(f"✅ Encontradas {len(result['solutions'])} solución(es)")
+            
+            # Pasos
+            with st.expander("📝 Ver construcción del Lagrangiano y sistema", expanded=True):
+                for step in result['latex_steps']:
+                    st.latex(step)
+            
+            # Tabla de soluciones
+            if result['solutions']:
+                st.markdown("### 📋 Soluciones")
+                
+                import pandas as pd
+                
+                data = []
+                for i, sol in enumerate(result['solutions'], 1):
+                    point_str = f"({', '.join(f'{p:.4f}' for p in sol['point'])})"
+                    lambda_str = f"({', '.join(f'{lv:.4f}' for lv in sol['lambda_values'])})"
+                    
+                    data.append({
+                        '#': i,
+                        'Punto': point_str,
+                        'λ': lambda_str,
+                        'φ(punto)': f"{sol['function_value']:.6f}"
+                    })
+                
+                df = pd.DataFrame(data)
+                st.dataframe(df, use_container_width=True)
+                
+                # Valor óptimo
+                if result['optimal_value'] is not None:
+                    st.metric("Valor Óptimo", f"{result['optimal_value']:.6f}")
+    
+    # ========================================================================
+    # TAB 5: OPTIMIZACIÓN EN REGIONES
+    # ========================================================================
+    
+    with opt_tab[4]:
+        st.subheader("📍 Optimización sobre Regiones")
+        
+        st.info("💡 Encuentra máximos/mínimos globales en una región acotada (triángulo, rectángulo, elipse).")
+        
+        # Función
+        reg_phi_str = st.text_input(
+            "Función φ(x,y):",
+            value="x + y",
+            key="reg_phi"
+        )
+        
+        # Tipo de región
+        region_type = st.selectbox(
+            "Tipo de región:",
+            ["Triángulo", "Rectángulo", "Elipse"],
+            key="reg_type"
+        )
+        
+        region_dict = {}
+        
+        if region_type == "Triángulo":
+            st.markdown("**Vértices del triángulo:**")
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                v1_x = st.number_input("V1 x:", value=0.0, step=0.5, key="v1x")
+                v1_y = st.number_input("V1 y:", value=0.0, step=0.5, key="v1y")
+            with col2:
+                v2_x = st.number_input("V2 x:", value=0.0, step=0.5, key="v2x")
+                v2_y = st.number_input("V2 y:", value=8.0, step=0.5, key="v2y")
+            with col3:
+                v3_x = st.number_input("V3 x:", value=4.0, step=0.5, key="v3x")
+                v3_y = st.number_input("V3 y:", value=0.0, step=0.5, key="v3y")
+            
+            region_dict = {
+                'type': 'triangle',
+                'vertices': [(v1_x, v1_y), (v2_x, v2_y), (v3_x, v3_y)]
+            }
+        
+        elif region_type == "Rectángulo":
+            st.markdown("**Límites del rectángulo:**")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                x_min = st.number_input("x mín:", value=0.0, step=0.5, key="xmin")
+                x_max = st.number_input("x máx:", value=4.0, step=0.5, key="xmax")
+            with col2:
+                y_min = st.number_input("y mín:", value=0.0, step=0.5, key="ymin")
+                y_max = st.number_input("y máx:", value=8.0, step=0.5, key="ymax")
+            
+            region_dict = {
+                'type': 'rectangle',
+                'bounds': [(x_min, x_max), (y_min, y_max)]
+            }
+        
+        elif region_type == "Elipse":
+            st.markdown("**Parámetros de la elipse:**")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                ell_a = st.number_input("Semi-eje a:", value=3.0, step=0.5, key="ell_a")
+                ell_b = st.number_input("Semi-eje b:", value=2.0, step=0.5, key="ell_b")
+            with col2:
+                ell_h = st.number_input("Centro h:", value=0.0, step=0.5, key="ell_h")
+                ell_k = st.number_input("Centro k:", value=0.0, step=0.5, key="ell_k")
+            
+            region_dict = {
+                'type': 'ellipse',
+                'a': ell_a,
+                'b': ell_b,
+                'center': (ell_h, ell_k)
+            }
+        
+        if st.button("🔍 Optimizar en Región", type="primary", key="calc_reg"):
+            try:
+                # Parsear
+                x, y = sp.symbols('x y')
+                phi = cv.parse_expr_safe(reg_phi_str, (x, y))
+                
+                # Optimizar
+                result = opt.optimize_on_region(phi, (x, y), region_dict)
+                
+                # Guardar
+                st.session_state['reg_result'] = result
+                st.session_state['reg_phi'] = phi
+                st.session_state['reg_region'] = region_dict
+                st.session_state['reg_computed'] = True
+                
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
+                st.session_state['reg_computed'] = False
+        
+        # Mostrar resultados
+        if st.session_state.get('reg_computed', False):
+            result = st.session_state['reg_result']
+            phi = st.session_state['reg_phi']
+            region_dict = st.session_state['reg_region']
+            
+            st.success("✅ Optimización completada")
+            
+            # Pasos
+            with st.expander("📝 Ver análisis completo", expanded=False):
+                for step in result['latex_steps']:
+                    st.latex(step)
+            
+            # Resultados principales
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("### 🔺 Mínimo Global")
+                min_point = result['global_minimum']['point']
+                min_val = result['global_minimum']['value']
+                st.latex(f"\\text{{Punto: }} ({min_point[0]:.4f}, {min_point[1]:.4f})")
+                st.latex(f"\\phi = {min_val:.6f}")
+                st.caption(f"Tipo: {result['global_minimum']['type']}")
+            
+            with col2:
+                st.markdown("### 🔻 Máximo Global")
+                max_point = result['global_maximum']['point']
+                max_val = result['global_maximum']['value']
+                st.latex(f"\\text{{Punto: }} ({max_point[0]:.4f}, {max_point[1]:.4f})")
+                st.latex(f"\\phi = {max_val:.6f}")
+                st.caption(f"Tipo: {result['global_maximum']['type']}")
+            
+            # Tabla comparativa completa
+            with st.expander("📊 Ver tabla completa de candidatos", expanded=False):
+                import pandas as pd
+                
+                data = []
+                for cand in result['comparison_table']:
+                    point_str = f"({cand['point'][0]:.4f}, {cand['point'][1]:.4f})"
+                    data.append({
+                        'Punto': point_str,
+                        'φ': f"{cand['value']:.6f}",
+                        'Tipo': cand['type']
+                    })
+                
+                df = pd.DataFrame(data)
+                st.dataframe(df, use_container_width=True)
+            
+            # Visualización 2D
+            st.markdown("### 📊 Visualización")
+            
+            try:
+                # Construir lista de todos los puntos para marcar
+                all_points = []
+                
+                # Añadir puntos críticos interiores
+                for cp in result['interior_critical_points']:
+                    all_points.append({
+                        'point': cp['point'],
+                        'value': cp['function_value'],
+                        'type': f"interior ({cp['classification']})"
+                    })
+                
+                # Añadir puntos de borde
+                for bp in result['boundary_critical_points']:
+                    all_points.append(bp)
+                
+                # Añadir vértices
+                for vp in result['vertex_values']:
+                    vp_copy = vp.copy()
+                    vp_copy['type'] = 'vértice'
+                    all_points.append(vp_copy)
+                
+                # Determinar bounds
+                all_x = [p['point'][0] for p in all_points]
+                all_y = [p['point'][1] for p in all_points]
+                
+                margin = 1.0
+                bounds = (
+                    (min(all_x) - margin, max(all_x) + margin),
+                    (min(all_y) - margin, max(all_y) + margin)
+                )
+                
+                fig = opt.visualize_contour_2d(
+                    phi,
+                    (sp.Symbol('x'), sp.Symbol('y')),
+                    critical_points=all_points,
+                    bounds=bounds,
+                    show_gradient=False,
+                    region=region_dict,
+                    resolution=100
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+            except Exception as e:
+                st.warning(f"No se pudo generar visualización: {e}")
+    
+    # ========================================================================
+    # TAB 6: CASOS ESPECIALES
+    # ========================================================================
+    
+    with opt_tab[5]:
+        st.subheader("⭐ Casos Especiales Pre-Configurados")
+        
+        st.markdown("""
+        Problemas clásicos de optimización con soluciones conocidas.
+        Úsalos para verificar el funcionamiento del módulo.
+        """)
+        
+        caso = st.selectbox(
+            "Selecciona un caso:",
+            [
+                "Rectángulo inscrito en elipse",
+                "Cobb-Douglas con restricción presupuestaria",
+                "Integral de línea F·dr (círculo unitario)"
+            ],
+            key="caso_especial"
+        )
+        
+        # ---- CASO 1: Rectángulo en elipse ----
+        if caso == "Rectángulo inscrito en elipse":
+            st.markdown("### Rectángulo Inscrito en Elipse")
+            
+            st.latex(r"\text{Maximizar área } A = 4xy \text{ sujeto a } \frac{x^2}{a^2} + \frac{y^2}{b^2} = 1")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                a_val = st.number_input("Semi-eje a:", value=3.0, step=0.5, key="rect_a")
+            with col2:
+                b_val = st.number_input("Semi-eje b:", value=2.0, step=0.5, key="rect_b")
+            
+            if st.button("✅ Resolver", key="solve_rect"):
+                result = opt.max_rectangle_in_ellipse(a_val, b_val)
+                
+                st.success("✅ Solución analítica:")
+                
+                for step in result['latex_steps']:
+                    st.latex(step)
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("x óptimo", f"{result['optimal_point'][0]:.6f}")
+                with col2:
+                    st.metric("y óptimo", f"{result['optimal_point'][1]:.6f}")
+                with col3:
+                    st.metric("Área máxima", f"{result['maximum_area']:.6f}")
+        
+        # ---- CASO 2: Cobb-Douglas ----
+        elif caso == "Cobb-Douglas con restricción presupuestaria":
+            st.markdown("### Optimización Cobb-Douglas")
+            
+            st.latex(r"\text{Maximizar } f(x,y) = x^\alpha y^\beta \text{ sujeto a } p_x x + p_y y = M")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                alpha_val = st.number_input("α:", value=0.5, step=0.1, key="cd_alpha")
+                beta_val = st.number_input("β:", value=0.5, step=0.1, key="cd_beta")
+            with col2:
+                px_val = st.number_input("Precio x:", value=150.0, step=10.0, key="cd_px")
+                py_val = st.number_input("Precio y:", value=250.0, step=10.0, key="cd_py")
+            
+            M_val = st.number_input("Presupuesto M:", value=50000.0, step=1000.0, key="cd_M")
+            
+            if st.button("✅ Resolver", key="solve_cd"):
+                result = opt.cobb_douglas_optimization(alpha_val, beta_val, px_val, py_val, M_val)
+                
+                st.success("✅ Solución con Lagrange:")
+                
+                with st.expander("📝 Ver pasos completos", expanded=True):
+                    for step in result['latex_steps']:
+                        st.latex(step)
+                
+                if result['result']['solutions']:
+                    sol = result['result']['solutions'][0]
+                    
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("x*", f"{sol['point'][0]:.4f}")
+                    with col2:
+                        st.metric("y*", f"{sol['point'][1]:.4f}")
+                    with col3:
+                        st.metric("f(x*, y*)", f"{sol['function_value']:.4f}")
+        
+        # ---- CASO 3: Integral de línea ----
+        elif caso == "Integral de línea F·dr (círculo unitario)":
+            st.markdown("### Integral de Línea Clásica")
+            
+            st.markdown("""
+            Campo rotacional típico: F = (-y, x, 0)
+            
+            Curva: círculo unitario parametrizado como r(t) = (cos(t), sin(t), 0), t ∈ [0, 2π]
+            
+            **Resultado esperado:** ∫ F·dr = 2π
+            """)
+            
+            st.info("💡 Este caso está implementado en la sección **Integral de Línea**. Ve allí para cálculo completo.")
+            
+            if st.button("📝 Mostrar derivación paso a paso", key="show_line_derivation"):
+                st.markdown("### Derivación:")
+                
+                steps = [
+                    r"\text{1. Campo: } \mathbf{F} = (-y, x, 0)",
+                    r"\text{2. Curva: } \mathbf{r}(t) = (\cos t, \sin t, 0), \quad t \in [0, 2\pi]",
+                    r"\text{3. Derivada: } \mathbf{r}'(t) = (-\sin t, \cos t, 0)",
+                    r"\text{4. Sustituir en F: } \mathbf{F}(\mathbf{r}(t)) = (-\sin t, \cos t, 0)",
+                    r"\text{5. Producto punto: } \mathbf{F} \cdot \mathbf{r}' = (-\sin t)(-\sin t) + (\cos t)(\cos t) + 0 = \sin^2 t + \cos^2 t = 1",
+                    r"\text{6. Integrar: } \int_0^{2\pi} 1 \, dt = 2\pi"
+                ]
+                
+                for step in steps:
+                    st.latex(step)
+                
+                st.success("✅ Resultado: 2π ≈ 6.28318531")
 
 
 # ============================================================================

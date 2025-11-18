@@ -2247,7 +2247,7 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
                 "Función φ(x,y) o φ(x,y,z):",
                 value="x^2 + y^2",
                 help="Ejemplos: x^2 + y^2, x*y*z, sin(x)*cos(y)",
-                key="grad_phi"
+                key="input_grad_phi"
             )
         
         with col2:
@@ -2255,7 +2255,7 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
                 "Variables (separadas por coma):",
                 value="x, y",
                 help="Ejemplo: x, y o x, y, z",
-                key="grad_vars"
+                key="input_grad_vars"
             )
         
         # Punto de evaluación
@@ -2400,7 +2400,7 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
             "Función φ(x,y) o φ(x,y,z):",
             value="x^2 - y^2",
             help="Ejemplo clásico de punto silla: x^2 - y^2",
-            key="crit_phi"
+            key="input_crit_phi"
         )
         
         crit_vars_str = st.text_input(
@@ -2532,7 +2532,7 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
             "Función objetivo φ:",
             value="x*y",
             help="Función a maximizar/minimizar",
-            key="lag_phi"
+            key="input_lag_phi"
         )
         
         lag_vars_str = st.text_input(
@@ -2629,7 +2629,7 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
         reg_phi_str = st.text_input(
             "Función φ(x,y):",
             value="x + y",
-            key="reg_phi"
+            key="input_reg_phi"
         )
         
         # Tipo de región

@@ -714,20 +714,22 @@ def optimize_unconstrained(
             if max_candidates:
                 global_max = max_candidates[-1]
             
-            # Tabla comparativa
-            latex_steps.append("\\text{Tabla comparativa:}")
-            latex_steps.append("\\begin{array}{|c|c|c|}")
-            latex_steps.append("\\hline")
-            latex_steps.append("\\text{Punto} & \\phi(\\text{punto}) & \\text{Clasificación} \\\\")
-            latex_steps.append("\\hline")
+            # Tabla comparativa (formato simplificado para Streamlit)
+            latex_steps.append("\\text{\\textbf{Tabla de resultados:}}")
+            latex_steps.append("")  # Línea en blanco
             
-            for cp in sorted_points:
+            for i, cp in enumerate(sorted_points, 1):
                 point_str = format_point_exact(cp['point'], tuple(str(v) for v in vars))
                 val_str = format_number_prefer_exact(cp['function_value'])
-                latex_steps.append(f"{point_str} & {val_str} & \\text{{{cp['classification']}}} \\\\")
-            
-            latex_steps.append("\\hline")
-            latex_steps.append("\\end{array}")
+                classif = cp['classification']
+                
+                # Emoji según clasificación
+                emoji = "🔵" if classif == "mínimo local" else "🔴" if classif == "máximo local" else "🟡"
+                
+                latex_steps.append(f"\\text{{{emoji} Punto {i}: }} {point_str}")
+                latex_steps.append(f"\\quad \\phi = {val_str}")
+                latex_steps.append(f"\\quad \\text{{Clasificación: {classif}}}")
+                latex_steps.append("")  # Separador
         else:
             latex_steps.append(
                 "\\text{⚠ No se encontraron puntos críticos}"
@@ -1196,24 +1198,24 @@ def optimize_on_region(
         # ====================================================================
         # PASO 4: Comparar y encontrar extremos globales
         # ====================================================================
-        latex_steps.append("\\text{\\textbf{4. Tabla comparativa:}}")
+        latex_steps.append("\\text{\\textbf{4. Comparación de candidatos:}}")
+        latex_steps.append("")
         
         # Ordenar candidatos
         all_candidates_sorted = sorted(all_candidates, key=lambda c: c['value'])
         
-        # Tabla LaTeX
-        latex_steps.append("\\begin{array}{|c|c|c|}")
-        latex_steps.append("\\hline")
-        latex_steps.append("\\text{Punto} & \\phi & \\text{Tipo} \\\\")
-        latex_steps.append("\\hline")
-        
-        for cand in all_candidates_sorted:
+        # Mostrar cada candidato
+        for i, cand in enumerate(all_candidates_sorted, 1):
             point_str = format_point_exact(cand['point'], tuple(str(v) for v in vars))
             val_str = format_number_prefer_exact(cand['value'])
-            latex_steps.append(f"{point_str} & {val_str} & \\text{{{cand['type']}}} \\\\")
-        
-        latex_steps.append("\\hline")
-        latex_steps.append("\\end{array}")
+            tipo = cand['type']
+            
+            # Emoji según tipo
+            emoji = "📍" if tipo == "crítico interior" else "📐" if tipo == "frontera" else "⬡"
+            
+            latex_steps.append(f"\\text{{{emoji} Candidato {i}: }} {point_str}")
+            latex_steps.append(f"\\quad \\phi = {val_str} \\quad \\text{{({tipo})}}")
+            latex_steps.append("")
         
         # Mínimo y máximo globales
         global_min = all_candidates_sorted[0]
@@ -1223,10 +1225,10 @@ def optimize_on_region(
         min_str = format_point_exact(global_min['point'], tuple(str(v) for v in vars))
         max_str = format_point_exact(global_max['point'], tuple(str(v) for v in vars))
         latex_steps.append(
-            f"\\text{{Mínimo global: }} {min_str}, \\phi = {format_number_prefer_exact(global_min['value'])}"
+            f"\\text{{🔻 Mínimo global: }} {min_str}, \\; \\phi = {format_number_prefer_exact(global_min['value'])}"
         )
         latex_steps.append(
-            f"\\text{{Máximo global: }} {max_str}, \\phi = {format_number_prefer_exact(global_max['value'])}"
+            f"\\text{{🔺 Máximo global: }} {max_str}, \\; \\phi = {format_number_prefer_exact(global_max['value'])}"
         )
         
         return {

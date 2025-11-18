@@ -2307,6 +2307,7 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
                 st.session_state['grad_result_computed'] = result
                 st.session_state['grad_phi_parsed'] = phi
                 st.session_state['grad_vars_parsed'] = vars_sym
+                st.session_state['grad_point'] = point
                 st.session_state['grad_computed'] = True
                 
             except Exception as e:
@@ -2318,6 +2319,7 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
             result = st.session_state['grad_result_computed']
             phi = st.session_state['grad_phi_parsed']
             vars_sym = st.session_state['grad_vars_parsed']
+            point = st.session_state['grad_point']
             
             st.success("✅ Cálculo completado")
             

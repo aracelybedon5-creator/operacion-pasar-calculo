@@ -2304,9 +2304,9 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
                 result = opt.directional_derivative(phi, vars_sym, point, direction)
                 
                 # Guardar en session state
-                st.session_state['grad_result'] = result
-                st.session_state['grad_phi'] = phi
-                st.session_state['grad_vars'] = vars_sym
+                st.session_state['grad_result_computed'] = result
+                st.session_state['grad_phi_parsed'] = phi
+                st.session_state['grad_vars_parsed'] = vars_sym
                 st.session_state['grad_computed'] = True
                 
             except Exception as e:
@@ -2315,9 +2315,9 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
         
         # Mostrar resultados
         if st.session_state.get('grad_computed', False):
-            result = st.session_state['grad_result']
-            phi = st.session_state['grad_phi']
-            vars_sym = st.session_state['grad_vars']
+            result = st.session_state['grad_result_computed']
+            phi = st.session_state['grad_phi_parsed']
+            vars_sym = st.session_state['grad_vars_parsed']
             
             st.success("✅ Cálculo completado")
             
@@ -2423,9 +2423,9 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
                 result = opt.optimize_unconstrained(phi, vars_sym)
                 
                 # Guardar
-                st.session_state['crit_result'] = result
-                st.session_state['crit_phi'] = phi
-                st.session_state['crit_vars'] = vars_sym
+                st.session_state['crit_result_computed'] = result
+                st.session_state['crit_phi_parsed'] = phi
+                st.session_state['crit_vars_parsed'] = vars_sym
                 st.session_state['crit_computed'] = True
                 
             except Exception as e:
@@ -2434,9 +2434,9 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
         
         # Mostrar resultados
         if st.session_state.get('crit_computed', False):
-            result = st.session_state['crit_result']
-            phi = st.session_state['crit_phi']
-            vars_sym = st.session_state['crit_vars']
+            result = st.session_state['crit_result_computed']
+            phi = st.session_state['crit_phi_parsed']
+            vars_sym = st.session_state['crit_vars_parsed']
             
             st.success(f"✅ Encontrados {len(result['critical_points'])} punto(s) crítico(s)")
             
@@ -2569,10 +2569,10 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
                 result = opt.solve_lagrange(phi, vars_sym, constraints)
                 
                 # Guardar
-                st.session_state['lag_result'] = result
-                st.session_state['lag_phi'] = phi
-                st.session_state['lag_vars'] = vars_sym
-                st.session_state['lag_constraints'] = constraints
+                st.session_state['lag_result_computed'] = result
+                st.session_state['lag_phi_parsed'] = phi
+                st.session_state['lag_vars_parsed'] = vars_sym
+                st.session_state['lag_constraints_parsed'] = constraints
                 st.session_state['lag_computed'] = True
                 
             except Exception as e:
@@ -2581,8 +2581,8 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
         
         # Mostrar resultados
         if st.session_state.get('lag_computed', False):
-            result = st.session_state['lag_result']
-            phi = st.session_state['lag_phi']
+            result = st.session_state['lag_result_computed']
+            phi = st.session_state['lag_phi_parsed']
             
             st.success(f"✅ Encontradas {len(result['solutions'])} solución(es)")
             
@@ -2704,9 +2704,9 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
                 result = opt.optimize_on_region(phi, (x, y), region_dict)
                 
                 # Guardar
-                st.session_state['reg_result'] = result
-                st.session_state['reg_phi'] = phi
-                st.session_state['reg_region'] = region_dict
+                st.session_state['reg_result_computed'] = result
+                st.session_state['reg_phi_parsed'] = phi
+                st.session_state['reg_region_parsed'] = region_dict
                 st.session_state['reg_computed'] = True
                 
             except Exception as e:
@@ -2715,9 +2715,9 @@ elif funcionalidad == "📊 Optimización (Máximos/Mínimos)":
         
         # Mostrar resultados
         if st.session_state.get('reg_computed', False):
-            result = st.session_state['reg_result']
-            phi = st.session_state['reg_phi']
-            region_dict = st.session_state['reg_region']
+            result = st.session_state['reg_result_computed']
+            phi = st.session_state['reg_phi_parsed']
+            region_dict = st.session_state['reg_region_parsed']
             
             st.success("✅ Optimización completada")
             
